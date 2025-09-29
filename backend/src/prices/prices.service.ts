@@ -1,56 +1,55 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { CreatePriceDto } from './dto/create-price.dto';
 import { UpdatePriceDto } from './dto/update-price.dto';
 import { Price } from './entities/price.entity';
-import { createClient } from '@supabase/supabase-js';
-import * as dotenv from 'dotenv';
-dotenv.config();
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY,
-);
+import { SupabaseService } from '../supabase/supabase.service';
 
 @Injectable()
 export class PricesService {
+  constructor(private readonly supabaseService: SupabaseService) {}
+
+  private client() {
+    return this.supabaseService.getClient();
+  }
+
   async create(createPriceDto: CreatePriceDto): Promise<Price> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client()
       .from('prices')
       .insert(createPriceDto)
       .select()
       .single();
 
-    if (error) throw new Error(error.message);
-    return data;
+    if (error) throw new InternalServerErrorException(error.message);
+    return data as Price;
   }
 
   async findAll(): Promise<Price[]> {
-    const { data, error } = await supabase.from('prices').select('*');
-    if (error) throw new Error(error.message);
-    return data;
+    const { data, error } = await this.client().from('prices').select('*');
+    if (error) throw new InternalServerErrorException(error.message);
+    return data as Price[];
   }
 
   async findOne(id: string): Promise<Price> {
-    const { data, error } = await supabase.from('prices').select('*').eq('id', id).single();
-    if (error) throw new Error(error.message);
-    return data;
+    const { data, error } = await this.client().from('prices').select('*').eq('id', id).single();
+    if (error) throw new InternalServerErrorException(error.message);
+    return data as Price;
   }
 
   async update(id: string, updatePriceDto: UpdatePriceDto): Promise<Price> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client()
       .from('prices')
       .update(updatePriceDto)
       .eq('id', id)
       .select()
       .single();
 
-    if (error) throw new Error(error.message);
-    return data;
+    if (error) throw new InternalServerErrorException(error.message);
+    return data as Price;
   }
 
   async remove(id: string): Promise<string> {
-    const { error } = await supabase.from('prices').delete().eq('id', id);
-    if (error) throw new Error(error.message);
+    const { error } = await this.client().from('prices').delete().eq('id', id);
+    if (error) throw new InternalServerErrorException(error.message);
     return `Price with id=${id} deleted successfully`;
   }
 }
