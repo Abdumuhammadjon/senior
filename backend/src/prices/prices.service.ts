@@ -3,6 +3,8 @@ import { CreatePriceDto } from './dto/create-price.dto';
 import { UpdatePriceDto } from './dto/update-price.dto';
 import { Price } from './entities/price.entity';
 import { createClient } from '@supabase/supabase-js';
+import * as dotenv from 'dotenv';
+dotenv.config();
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
