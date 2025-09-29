@@ -1,5 +1,5 @@
 // ...existing code...
-import Navbar from "./components/Navbar";
+// import Navbar from "./components/Navbar";
 import "./globals.css";
 // ...existing code...
 
@@ -11,7 +11,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <Navbar />
+        {/* <Navbar /> */}
         {children}
       </body>
     </html>
