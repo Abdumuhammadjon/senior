@@ -10,6 +10,16 @@ export class PricesService {
 
   private client() {
     return this.supabaseService.getClient();
+  } 
+
+  async getPrices() {
+    const client = this.supabaseService.getClient();
+    const { data, error } = await client
+      .from('prices')
+      .select('*');
+
+    if (error) throw error;
+    return data;
   }
 
   async create(createPriceDto: CreatePriceDto): Promise<Price> {
