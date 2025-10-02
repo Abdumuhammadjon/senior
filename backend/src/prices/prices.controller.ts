@@ -32,4 +32,16 @@ export class PricesController {
   remove(@Param('id') id: string): Promise<string> {
     return this.pricesService.remove(id);
   }
+
+  // API dan ma'lumot olish uchun
+  @Get('from-api')
+  async fetchFromApi(): Promise<Price[]> {
+    return this.pricesService.fetchPricesFromApi();
+  }
+
+  // API dan olib, Supabase ga saqlash uchun
+  @Post('fetch-save')
+  async fetchAndSave(): Promise<Price[]> {
+    return this.pricesService.fetchAndSavePrices();
+  }
 }

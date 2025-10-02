@@ -1,25 +1,35 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
 import { CreatePriceDto } from './dto/create-price.dto';
 import { UpdatePriceDto } from './dto/update-price.dto';
-import { Price } from './entities/price.entity';
 import { SupabaseService } from '../supabase/supabase.service';
+
+export class Price {
+  id: string;
+  product: string;
+  country: string;
+  unit: string;
+  currency: string;
+  price: number;
+  created_at: Date;
+}
 
 @Injectable()
 export class PricesService {
-  constructor(private readonly supabaseService: SupabaseService) {}
+  constructor(
+    private readonly supabaseService: SupabaseService,
+    private readonly httpService: HttpService,
+  ) {}
 
   private client() {
     return this.supabaseService.getClient();
-  } 
+  }
 
-  async getPrices() {
-    const client = this.supabaseService.getClient();
-    const { data, error } = await client
-      .from('prices')
-      .select('*');
-
-    if (error) throw error;
-    return data;
+  async getPrices(): Promise<Price[]> {
+    const { data, error } = await this.client().from('prices').select('*');
+    if (error) throw new InternalServerErrorException(error.message);
+    return data as Price[];
   }
 
   async create(createPriceDto: CreatePriceDto): Promise<Price> {
@@ -34,13 +44,15 @@ export class PricesService {
   }
 
   async findAll(): Promise<Price[]> {
-    const { data, error } = await this.client().from('prices').select('*');
-    if (error) throw new InternalServerErrorException(error.message);
-    return data as Price[];
+    return this.getPrices(); // getPrices bilan bir xil
   }
 
   async findOne(id: string): Promise<Price> {
-    const { data, error } = await this.client().from('prices').select('*').eq('id', id).single();
+    const { data, error } = await this.client()
+      .from('prices')
+      .select('*')
+      .eq('id', id)
+      .single();
     if (error) throw new InternalServerErrorException(error.message);
     return data as Price;
   }
@@ -61,5 +73,41 @@ export class PricesService {
     const { error } = await this.client().from('prices').delete().eq('id', id);
     if (error) throw new InternalServerErrorException(error.message);
     return `Price with id=${id} deleted successfully`;
+  }
+
+  // Yangi method: Fake Store API dan ma'lumot olib, Price formatiga map qilish
+ async fetchPricesFromApi(): Promise<Price[]> {
+    try {
+      const { data: products } = await firstValueFrom(
+        this.httpService.get('https://fakestoreapi.com/products'),
+      );
+
+      // Har bir product ni Price ga map qilish
+      const prices: Price[] = products.map((product: any) => ({
+        id: product.id.toString(),
+        product: product.title, // product nomi
+        country: 'USA', // Default, API da yo'q
+        unit: 'piece', // Default, API da yo'q
+        currency: 'USD', // Default, API da yo'q
+        price: product.price,
+        created_at: new Date(),
+      }));
+
+      return prices;
+    } catch (error) {
+      throw new InternalServerErrorException(`API xatosi: ${error.message}`);
+    }
+  }
+
+  // Ixtiyoriy: API dan olib, Supabase ga saqlash
+  async fetchAndSavePrices(): Promise<Price[]> {
+    const prices = await this.fetchPricesFromApi();
+
+    // Har birini create qilish (yoki batch insert)
+    const savedPrices = await Promise.all(
+      prices.map((price) => this.create(price as CreatePriceDto)),
+    );
+
+    return savedPrices;
   }
 }
