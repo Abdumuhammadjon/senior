@@ -124,17 +124,25 @@ export class PricesService {
     console.log(prices);
 
     // Supabase default id va created_at ishlashi uchun olib tashlaymiz
-    const insertData = prices.map(({ id, created_at, ...rest }) => rest);
+  const insertData = prices.map(({ id, created_at, ...rest }) => rest);
+ console.log("InsertData:", JSON.stringify(insertData, null, 2));
 
-    const { data, error } = await this.client()
-      .from('prices')
-      .insert(insertData)
-      .select();
 
-    if (error) {
-      this.logger.error('Supabase insert xato:', error);
-      throw new InternalServerErrorException(error.message);
-    }
+
+console.log("Supabasega yuboriladigan data:", insertData);
+
+const { data, error } = await this.client()
+  .from('prices')
+  .insert(insertData)
+  .select();
+
+if (error) {
+  console.error("Supabase ERROR:", JSON.stringify(error, null, 2));
+  throw new InternalServerErrorException(error.message);
+}
+
+console.log("Supabasega yozilgan data:", data);
+
 
     this.logger.log(`Supabase ga ${data?.length || 0} ta yozuv qo‘shildi`);
     return data as Price[];
