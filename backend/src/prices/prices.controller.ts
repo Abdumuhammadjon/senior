@@ -44,4 +44,4 @@ export class PricesController {
   async fetchAndSave(): Promise<Price[]> {
     return this.pricesService.fetchAndSavePrices();
   }
-}
+} 

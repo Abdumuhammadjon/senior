@@ -99,15 +99,21 @@ export class PricesService {
     }
   }
 
-  // Ixtiyoriy: API dan olib, Supabase ga saqlash
   async fetchAndSavePrices(): Promise<Price[]> {
-    const prices = await this.fetchPricesFromApi();
+  const prices = await this.fetchPricesFromApi();
+  console.log('API dan olingan prices:', prices); // Bu qismni qo'shing
 
-    // Har birini create qilish (yoki batch insert)
-    const savedPrices = await Promise.all(
-      prices.map((price) => this.create(price as CreatePriceDto)),
-    );
+  const insertData = prices.map(p => ({ ...p, id: undefined })); // ID ni o'chiring
+  console.log('Insert qilinayotgan data:', insertData); // Bu ham
 
-    return savedPrices;
-  }
+  const { data, error } = await this.client()
+    .from('prices')
+    .insert(insertData)
+    .select();
+
+  console.log('Insert natija:', data, error); // Xato yoki data ni ko'rsatadi
+
+  if (error) throw new InternalServerErrorException(error.message);
+  return data as Price[];
+}
 }
