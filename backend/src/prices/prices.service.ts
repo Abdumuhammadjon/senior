@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { CreatePriceDto } from './dto/create-price.dto';
 import { UpdatePriceDto } from './dto/update-price.dto';
 import { SupabaseService } from '../supabase/supabase.service';
+import * as crypto from 'crypto';
 
 export class Price {
   id: string;
@@ -82,16 +83,15 @@ export class PricesService {
         this.httpService.get('https://fakestoreapi.com/products'),
       );
 
-      // Har bir product ni Price ga map qilish
       const prices: Price[] = products.map((product: any) => ({
-        id: product.id.toString(),
-        product: product.title, // product nomi
-        country: 'USA', // Default, API da yo'q
-        unit: 'piece', // Default, API da yo'q
-        currency: 'USD', // Default, API da yo'q
-        price: product.price,
-        created_at: new Date(),
-      }));
+      id: crypto.randomUUID(),  // Yangi UUID generatsiya
+      product: product.title,
+      country: 'USA',
+      unit: 'piece',
+      currency: 'USD',
+      price: product.price,
+      created_at: new Date(),
+    }))
 
       return prices;
     } catch (error) {
@@ -99,19 +99,20 @@ export class PricesService {
     }
   }
 
-  async fetchAndSavePrices(): Promise<Price[]> {
+async fetchAndSavePrices(): Promise<Price[]> {
   const prices = await this.fetchPricesFromApi();
-  console.log('API dan olingan prices:', prices); // Bu qismni qo'shing
+  console.log('API dan olingan prices soni:', prices.length); // Bu qismni qo'shing
 
-  const insertData = prices.map(p => ({ ...p, id: undefined })); // ID ni o'chiring
-  console.log('Insert qilinayotgan data:', insertData); // Bu ham
+  const insertData = prices.map(p => ({ ...p, id: undefined })); // UUID uchun
+  console.log('Insert qilinayotgan data (birinchi 1 ta):', insertData[0]); // Birinchi elementni ko'rsatish
 
   const { data, error } = await this.client()
     .from('prices')
     .insert(insertData)
     .select();
 
-  console.log('Insert natija:', data, error); // Xato yoki data ni ko'rsatadi
+  console.log('Supabase insert natija - Data soni:', data ? data.length : 0);
+  console.log('Supabase insert xato:', error ? error.message : 'Yo\'q'); // Xato yoki OK
 
   if (error) throw new InternalServerErrorException(error.message);
   return data as Price[];
