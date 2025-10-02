@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { CreatePriceDto } from './dto/create-price.dto';
@@ -18,6 +18,8 @@ export class Price {
 
 @Injectable()
 export class PricesService {
+  private readonly logger = new Logger(PricesService.name); // ✅ Logger qo‘shildi
+
   constructor(
     private readonly supabaseService: SupabaseService,
     private readonly httpService: HttpService,
@@ -45,7 +47,7 @@ export class PricesService {
   }
 
   async findAll(): Promise<Price[]> {
-    return this.getPrices(); // getPrices bilan bir xil
+    return this.getPrices();
   }
 
   async findOne(id: string): Promise<Price> {
@@ -54,6 +56,7 @@ export class PricesService {
       .select('*')
       .eq('id', id)
       .single();
+
     if (error) throw new InternalServerErrorException(error.message);
     return data as Price;
   }
@@ -76,45 +79,58 @@ export class PricesService {
     return `Price with id=${id} deleted successfully`;
   }
 
-  // Yangi method: Fake Store API dan ma'lumot olib, Price formatiga map qilish
- async fetchPricesFromApi(): Promise<Price[]> {
+  async fetchPricesFromApi(): Promise<Price[]> {
     try {
-      const { data: products } = await firstValueFrom(
+      const response = await firstValueFrom(
         this.httpService.get('https://fakestoreapi.com/products'),
       );
 
+      this.logger.log('HTTP response keys: ' + Object.keys(response || {}).join(', '));
+      const products = response?.data;
+      if (!products || !Array.isArray(products)) {
+        this.logger.error('API returned unexpected body:', products);
+        throw new InternalServerErrorException('API’dan kutilgan format qaytmadi');
+      }
+
+      this.logger.log('API dan olingan products soni: ' + products.length);
+
       const prices: Price[] = products.map((product: any) => ({
-      id: crypto.randomUUID(),  // Yangi UUID generatsiya
-      product: product.title,
-      country: 'USA',
-      unit: 'piece',
-      currency: 'USD',
-      price: product.price,
-      created_at: new Date(),
-    }))
+        id: crypto.randomUUID(),
+        product: product.title,
+        country: 'USA',
+        unit: 'piece',
+        currency: 'USD',
+        price: product.price,
+        created_at: new Date(),
+      }));
 
       return prices;
-    } catch (error) {
-      throw new InternalServerErrorException(`API xatosi: ${error.message}`);
+    } catch (err) {
+      const error = err as any;
+      this.logger.error('fetchPricesFromApi — full error:', error);
+      if (error?.isAxiosError) {
+        this.logger.error('Axios status:', error.response?.status);
+        this.logger.error('Axios response data:', error.response?.data);
+      }
+      throw new InternalServerErrorException(`API xatosi: ${error?.message || 'unknown'}`);
     }
   }
 
-async fetchAndSavePrices(): Promise<Price[]> {
-  const prices = await this.fetchPricesFromApi();
-  console.log('API dan olingan prices soni:', prices.length); // Bu qismni qo'shing
+  async fetchAndSavePrices(): Promise<Price[]> {
+    const prices = await this.fetchPricesFromApi();
+    this.logger.log('API dan olingan prices soni: ' + prices.length);
 
-  const insertData = prices.map(p => ({ ...p, id: undefined })); // UUID uchun
-  console.log('Insert qilinayotgan data (birinchi 1 ta):', insertData[0]); // Birinchi elementni ko'rsatish
+    const insertData = prices.map(({ id, created_at, ...rest }) => rest);
 
-  const { data, error } = await this.client()
-    .from('prices')
-    .insert(insertData)
-    .select();
+    const { data, error } = await this.client()
+      .from('prices')
+      .insert(insertData)
+      .select();
 
-  console.log('Supabase insert natija - Data soni:', data ? data.length : 0);
-  console.log('Supabase insert xato:', error ? error.message : 'Yo\'q'); // Xato yoki OK
+    this.logger.log('Supabase insert natija:', data);
+    this.logger.error('Supabase insert xato:', error);
 
-  if (error) throw new InternalServerErrorException(error.message);
-  return data as Price[];
-}
+    if (error) throw new InternalServerErrorException(error.message);
+    return data as Price[];
+  }
 }

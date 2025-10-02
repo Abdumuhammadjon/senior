@@ -3,7 +3,9 @@ import { PricesService } from './prices.service';
 import { CreatePriceDto } from './dto/create-price.dto';
 import { UpdatePriceDto } from './dto/update-price.dto';
 import { Price } from './entities/price.entity';
+import { Logger } from '@nestjs/common';
 
+@Controller('prices')
 @Controller('prices')
 export class PricesController {
   constructor(private readonly pricesService: PricesService) {}
@@ -18,6 +20,18 @@ export class PricesController {
     return this.pricesService.findAll();
   }
 
+  // ⚡️ Avval statik routelar
+  @Get('from-api')
+  async fetchFromApi(): Promise<Price[]> {
+    return this.pricesService.fetchPricesFromApi();
+  }
+
+  @Post('fetch-save')
+  async fetchAndSave(): Promise<Price[]> {
+    return this.pricesService.fetchAndSavePrices();
+  }
+
+  // ⚡️ Keyin dinamik routelar
   @Get(':id')
   findOne(@Param('id') id: string): Promise<Price> {
     return this.pricesService.findOne(id);
@@ -32,16 +46,4 @@ export class PricesController {
   remove(@Param('id') id: string): Promise<string> {
     return this.pricesService.remove(id);
   }
-
-  // API dan ma'lumot olish uchun
-  @Get('from-api')
-  async fetchFromApi(): Promise<Price[]> {
-    return this.pricesService.fetchPricesFromApi();
-  }
-
-  // API dan olib, Supabase ga saqlash uchun
-  @Post('fetch-save')
-  async fetchAndSave(): Promise<Price[]> {
-    return this.pricesService.fetchAndSavePrices();
-  }
-} 
+}

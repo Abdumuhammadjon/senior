@@ -3,6 +3,7 @@ import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
+
 @Injectable()
 export class SupabaseService {
   private supabase: SupabaseClient;
@@ -10,6 +11,8 @@ export class SupabaseService {
   constructor(private configService: ConfigService) {
     const url = this.configService.get<string>('SUPABASE_URL');
     const key = this.configService.get<string>('SUPABASE_KEY');
+    console.log('Supabase URL:', url);
+    
 
     if (!url || !key) {
       throw new InternalServerErrorException(
