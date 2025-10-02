@@ -119,7 +119,9 @@ export class PricesService {
   async fetchAndSavePrices(): Promise<Price[]> {
   try {
     const prices = await this.fetchPricesFromApi();
+    
     this.logger.log(`API dan olingan prices soni: ${prices.length}`);
+    console.log(prices);
 
     // Supabase default id va created_at ishlashi uchun olib tashlaymiz
     const insertData = prices.map(({ id, created_at, ...rest }) => rest);
