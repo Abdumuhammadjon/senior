@@ -117,9 +117,11 @@ export class PricesService {
   }
 
   async fetchAndSavePrices(): Promise<Price[]> {
+  try {
     const prices = await this.fetchPricesFromApi();
-    this.logger.log('API dan olingan prices soni: ' + prices.length);
+    this.logger.log(`API dan olingan prices soni: ${prices.length}`);
 
+    // Supabase default id va created_at ishlashi uchun olib tashlaymiz
     const insertData = prices.map(({ id, created_at, ...rest }) => rest);
 
     const { data, error } = await this.client()
@@ -127,10 +129,19 @@ export class PricesService {
       .insert(insertData)
       .select();
 
-    this.logger.log('Supabase insert natija:', data);
-    this.logger.error('Supabase insert xato:', error);
+    if (error) {
+      this.logger.error('Supabase insert xato:', error);
+      throw new InternalServerErrorException(error.message);
+    }
 
-    if (error) throw new InternalServerErrorException(error.message);
+    this.logger.log(`Supabase ga ${data?.length || 0} ta yozuv qo‘shildi`);
     return data as Price[];
+  } catch (err) {
+    this.logger.error('fetchAndSavePrices — umumiy xato:', err);
+    throw new InternalServerErrorException(
+      err instanceof Error ? err.message : 'Noma’lum xato',
+    );
   }
+}
+
 }
